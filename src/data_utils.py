@@ -8,6 +8,7 @@ Created on 3/18/21 4:42 PM
 
 import os
 from config import GlobalConfig
+import jieba
 
 
 def read_data_from_file(file_path):
@@ -23,9 +24,36 @@ def read_data_from_file(file_path):
     return result
 
 
+class TextPreprocesser(object):
+    def __init__(self):
+        self.vocab_idx_dict = {}
+        self.label_idx_dict = {}
+
+    def cut_sequence(self, sequence):
+        temp = jieba.cut(sequence)
+        result = []
+        for vocab in temp:
+            result.append(vocab)
+            if vocab not in self.vocab_idx_dict:
+                self.vocab_idx_dict.setdefault(vocab, len(self.vocab_idx_dict))
+        return result
+
+    def label2idx(self, label):
+        if label not in self.label_idx_dict:
+            self.label_idx_dict.setdefault(label, len(self.label_idx_dict))
+        return self.label_idx_dict.get(label)
+
+    def get_vocab_dict(self):
+        return self.vocab_idx_dict
+
+    def get_label_dict(self):
+        return self.label_idx_dict
+
+
 class DataUtiler(object):
     def __init__(self):
         self.config = GlobalConfig
+        self.data_preprocesser = TextPreprocesser()
         self.data_dir_path = self.config.get("data_dir_path")
         self.train_data_path = self.data_dir_path + self.config.get("train_data_name")
         self.test_data_path = self.data_dir_path + self.config.get("test_data_name")
@@ -45,8 +73,8 @@ class DataUtiler(object):
         for line in lines:
             temp = line.strip('\n').split('\t')
             if len(temp) == 2:
-                self.train_labels.append(temp[0])
-                self.train_texts.append(temp[1])
+                self.train_labels.append(self.data_preprocesser.label2idx(temp[0]))
+                self.train_texts.append(self.data_preprocesser.cut_sequence(temp[1]))
 
     def test_data_format(self):
         self.test_texts = []
@@ -72,9 +100,9 @@ class DataUtiler(object):
         self.train_data_format()
         self.test_data_format()
         self.val_data_format()
-    
+
 
 if __name__ == '__main__':
     test = DataUtiler()
-    print(test.train_texts[:10])
-    print(test.train_labels[:10])
+    print(test.data_preprocesser.get_vocab_dict())
+    print(test.data_preprocesser.get_label_dict())
